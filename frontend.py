@@ -101,28 +101,77 @@ pressure_frame_reading.grid(row=1,column=0)
 
 #-----------------------graph-----------------------
 
-#temp
-def graph(frame,x_data,y_data,color):
+#graph making structure
+class Graph:
+    def __init__(self,frame,color,y_start,y_end,y_label):  #just getting the details
+        #super.__init__(self)          #x start/end removed                                          #no data req. for x axis cause it's time
+        self.frame=frame
+        self.color=str(color) #colour of line
+        self.graph_size = (2,2) #x,y in inches tupple req.
+        self.xlabel = "Time"
+        self.ylabel = str(y_label)
+        self.ax_color = (0.4,0.4,0.4,0)# tupple req.
+        self.graph_color = (0.4,0.4,0.4,0)
+        #self.xlim = (x_start,x_end)        x is time
+        self.ylim = (y_start,y_end)
+        self.xdata = []             #blank in starting
+        self.ydata = []
 
-    fig,ax = plt.subplots(figsize=(2,2))
-    ax.set_xlabel("Time")
-    ax.set_ylabel("temperature")
-    ax.set_facecolor((0,0,0,0.8))
-    fig.patch.set_facecolor((0,0,0,0.8))
+    def create_graph(self):
 
-    line = ax.plot(x_data,y_data,color=color,line_width=2)
+        self.fig,self.ax = plt.subplots(figsize=self.graph_size)
+        self.ax.set_xlabel("Time")
+        self.ax.set_ylabel(self.ylabel)
+        self.ax.set_facecolor(sub_frame_bg_colour)
+        self.fig.patch.set_facecolor(sub_frame_bg_colour)
+        self.ax.tick_params(axis='x',colors='#FFFFFF')
+        self.ax.tick_params(axis='y',colors='#FFFFFF')
+        #selfax.set_xlim(xlim[0],xlim[1])
+        self.ax.set_ylim(self.ylim[0],self.ylim[1])
+        (self.line,) = self.ax.plot(self.xdata,self.ydata,color=self.color)
 
-    canvas = FigureCanvasTkAgg(fig,master=frame)
-    canvas.get_tk_widget().grid(row=2,column=0)
+        self.canvas = FigureCanvasTkAgg(self.fig,master=self.frame)
+        self.canvas.get_tk_widget().grid(row=2,column=0)
     
-    if len(x_data)>20:
-        x_data
+    #starting time
+    start_time = time.time()
+    def updt_graph(self,new_ydata):
+        t = time.time() - self.start_time
 
-graph(temp_frame,0,0,'orange')
-graph(humid_frame,0,0,'blue')
-graph(moisture_frame,0,0,'red')
-graph(pressure_frame,0,0,'green')
+        if len(self.xdata)>20:
+            self.xdata.pop(0)
+            self.ydata.pop(0)
+        
+        self.xdata.append(t)
+        self.ydata.append(new_ydata)
 
+        self.line.set_data(self.xdata,self.ydata)
+        self.ax.set_xlim(max(0,t-30),t) #also gives scroll effect
+        self.ax.figure.canvas.draw()
+        self.ax.figure.canvas.flush_events()
+
+temperature_graph = Graph(temp_frame,"orange",-10,50,"Temperature")
+humidity_graph = Graph(humid_frame,"lightblue",0,100,"Humidity")
+moisture_graph = Graph(moisture_frame,"red",0,100,"Soil Moisture")
+pressure_graph = Graph(pressure_frame,"green",0,100,"air_pressure")
+
+temperature_graph.create_graph()
+humidity_graph.create_graph()
+moisture_graph.create_graph()
+pressure_graph.create_graph()
+
+def graphs():
+    first = True
+    while True:
+        data = read_data()
+        try:
+            humidity,temperature,moisture = data[0],data[1],data[2]
+            temperature_graph.updt_graph(float(temperature))
+            humidity_graph.updt_graph(float(humidity))
+            moisture_graph.updt_graph(float(moisture))
+            pressure_graph.updt_graph(0)
+        except Exception as e:
+            print(e)
 
 
 #--------------------------back part OR  recieveing readings-------
@@ -141,7 +190,7 @@ def read_data():
         try:
             #r.after(1,updt_readings,nums)#giving a list
             updt_readings(values)
-            print(values)
+            return values
         except Exception as e:
             print(e)
 #--------------------------data reading done-----------------------
@@ -159,13 +208,8 @@ def updt_readings(values):#gettings a list
         print(e)
         print(values)
     
-"""
 
-while True :
-    data = read_data()
-    if data:
-        humidity,temperature,moisture = data[0],data[1],data[2]
-        print(humidity,temperature,moisture)
-"""
+
 thread(target=read_data,daemon=True).start()
+thread(target=graphs,daemon=True).start()
 r.mainloop()
