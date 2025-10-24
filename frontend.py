@@ -12,7 +12,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 r = tk.Tk()
 r.geometry('1200x700')
-r.resizable(False,False)
+#r.resizable(False,False)
 
 
 #--------------------------gui part-----------------------
